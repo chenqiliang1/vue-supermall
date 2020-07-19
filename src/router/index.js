@@ -39,7 +39,7 @@ const routes = [
   }
 ]
 const router = new VueRouter({
-  router,
+  routes,
   mode:"history"
 })
 

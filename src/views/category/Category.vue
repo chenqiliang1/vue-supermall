@@ -1,5 +1,5 @@
 <template>
-  <div></div>
+  <div>分類</div>
 </template>
 
 <script>
