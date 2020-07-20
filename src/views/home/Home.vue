@@ -3,15 +3,16 @@
    <nav-bar class="home-nav">
      <div slot="center">購物街</div>
    </nav-bar>
+   <tab-control v-show="isTabFixed" class="tab-control" @tabClick='tabClick' :titles="titles" ref="tabControl_1"/>
    <scroll class="content" ref="scroll" 
    :probe-type="3" 
    @pullingUp="loadMore"
    @scroll="contentScroll"  
    :pull-up-load="true">
-      <home-swiper :banners='banners'/>
+      <home-swiper :banners='banners' @swiperImageLoad="swiperImageLoad"/>
       <recomend-view :recommends="recommends"/>
       <feature-view/>
-      <tab-control class="tab-control" @tabClick='tabClick' :titles="titles"/>
+      <tab-control  @tabClick='tabClick' :titles="titles" ref="tabControl_2"/>
       <goods-list :goods="showGoods"/>
    </scroll>
    <back-top @click.native="backClick" v-show="isShow"/>
@@ -32,6 +33,8 @@ import FeatureView from './childComps/FeatureView'
 
 import {getHomeMultidata,getHomeGoods,pop,news,sell} from 'network/home.js'
 
+import {debounce} from 'common/utils'
+
 export default {
   name: 'Home',
   data () {
@@ -46,6 +49,10 @@ export default {
       },
       currentType:"pop",
       isShow:false,
+      tabOffsetTop:0,
+      isTabFixed:false,
+      saveY:0,
+      homeItemListener:null,
       network:{
         pop,
         news,
@@ -60,11 +67,6 @@ export default {
     this.getHomeGoods('pop')
     this.getHomeGoods('news')
     this.getHomeGoods('sell')
-
-    //監聽圖片加載完成
-    this.$bus.$on('itemImageLoad',()=>{
-      this.$refs.scroll.refresh()
-    })
   },
   methods: {
     //網絡請求相關的
@@ -80,15 +82,24 @@ export default {
           this.goods[type].list.push(...this.network[type].list)
           this.goods[type].page++;
 
+          //重要：完成上拉加載更多
           this.$refs.scroll.finishPullUp()
       })
     },
     //事件監聽相關的
+    swiperImageLoad(){
+      // 獲取tabcontrol的offsetTop
+      this.tabOffsetTop = this.$refs.tabControl_2.$el.offsetTop
+      
+    },
     loadMore(){
       this.getHomeGoods(this.currentType)
     },
     contentScroll(position){
       this.isShow = (-position.y) > 500
+
+      // tabcontrol的吸頂
+      this.isTabFixed = this.tabOffsetTop < -position.y
       
     },
     backClick(){
@@ -106,10 +117,21 @@ export default {
           this.currentType = 'sell'
           break
       }
-
+      this.$refs.tabControl_1.currentIndex = index
+      this.$refs.tabControl_2.currentIndex = index
     }
   },
-  mounted () {},
+  mounted () {
+    //監聽圖片加載完成
+    const refresh = debounce(this.$refs.scroll.refresh,500)
+    
+    this.homeItemListener = ()=>{
+      refresh()
+    }
+    this.$bus.$on('itemImageLoad',this.homeItemListener)
+    
+    
+  },
   components: {
     NavBar,
     HomeSwiper,
@@ -125,37 +147,44 @@ export default {
       return this.goods[this.currentType].list
     }
   },
+  activated() {
+      this.$refs.scroll.scrollTo(0, this.saveY, 0)
+      this.$refs.scroll.refresh()
+    },
+  deactivated() {
+      this.saveY = this.$refs.scroll.getScrollY()
+
+      //取消全局事件監聽
+      this.$bus.$off('itemImgLoad',this.homeItemListener)
+    },
 }
 </script>
 
 <style scoped>
 #home{
-  padding-top: 44px;
+
   height: 100vh;
   position: relative;
 }
 .home-nav{
   background-color: var(--color-tint);
   color: white;
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  z-index: 9;
+  
 }
 .tab-control{
-  position: sticky;
-  top: 44px;
-  background-color: #fff;
+  position: relative;
+  z-index: 9;
+  background-color: white;
 }
 .content{
-  /* height: calc(100% - 93px); */
+ 
   overflow: hidden;
   position: absolute;
   top: 44px;
   bottom: 49px;
   left: 0;
   right: 0;
-  /* margin-top: 44px; */
+ 
 }
+
 </style>
