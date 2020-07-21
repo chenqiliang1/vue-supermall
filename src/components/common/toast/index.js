@@ -1,0 +1,19 @@
+import Toast from './Toast.vue'
+
+const obj = {}
+
+obj.install = function(Vue){
+
+  const contrustor = Vue.extend(Toast)
+
+  const toast = new contrustor()
+  
+  toast.$mount(document.createElement('div'))
+
+  document.body.appendChild(toast.$el)
+  
+  Vue.prototype.$toast = Toast
+
+}
+
+export default obj

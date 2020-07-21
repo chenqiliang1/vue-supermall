@@ -9,7 +9,7 @@
         <p class="content">{{commentInfo.content}}</p>
         <div class="imgs">
           <ul>
-            <li v-for="item in commentInfo.images" :key="item.index">
+            <li v-for="(item,index) in commentInfo.images" :key="index">
               <img :src="item" alt="">
             </li>
           </ul>

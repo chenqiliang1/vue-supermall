@@ -1,14 +1,16 @@
 <template>
   <div id="detail">
-    <deatil-nav-bar class="detail-nav"/>
-    <scroll class="content" ref="scroll">
-      <detail-swiper :topImages="topImages"/>
+    <deatil-nav-bar @titleClick='titleClick' class="detail-nav" ref="nav"/>
+    <scroll class="content" ref="scroll" @scroll="contentScroll" :probe-type="3">
+      <detail-swiper :top-images="topImages"/>
       <detail-base-info :goods="goods"/>
       <detail-shop-info :shop="shop"/>
       <detail-goods-info :detail-info="detailInfo" @imageLoad="imageLoad"/>
-      <detail-param-info :param-info="paramInfo"/>
-      <detail-comment-info :commentInfo="commentInfo"/>
+      <detail-param-info ref="params" :param-info="paramInfo"/>
+      <detail-comment-info ref="comment" :comment-info="commentInfo"/>
     </scroll>
+    <detail-bottom-bar @addCart="addCart"/>
+    <!-- <toast :message="加入購物車成功" :show="false"/> -->
   </div>
 </template>
 
@@ -20,10 +22,15 @@ import DetailShopInfo from './childComps/DetailShopInfo'
 import DetailGoodsInfo from './childComps/DetailGoodsInfo'
 import DetailParamInfo from './childComps/DetailParamInfo'
 import DetailCommentInfo from './childComps/DetailCommentInfo'
+import DetailBottomBar from './childComps/DetailBottomBar'
+
 
 import Scroll from 'components/common/scroll/Scroll'
+// import Toast from 'components/common/toast/Toast'
 
 import {getDetail, Goods, Shop, GoodsParam,res} from "network/detail";
+
+import {debounce} from 'common/utils'
 
 export default {
   name: 'Detail',
@@ -37,7 +44,10 @@ export default {
       detailImage:[],
       detailInfo:{},
       paramInfo: {},
-      commentInfo:{}
+      commentInfo:{},
+      themeTopYs:[0,100,500,1000],
+      getThemeTopY:null,
+      currentIndex:0
     };
   },
   created() {
@@ -63,13 +73,56 @@ export default {
       if(result.rate.cRate !== 0){
           this.commentInfo = result.rate.list[0]
       }
+      this.getThemeTopY = debounce(() => {
+           this.themeTopYs = []
+          this.themeTopYs.push(0)
+          this.themeTopYs.push(this.$refs.params.$el.offsetTop)
+          this.themeTopYs.push(this.$refs.comment.$el.offsetTop)
+          this.themeTopYs.push(this.$refs.comment.$el.offsetTop+200)  
+      },100)
+      // this.$nextTick(() => {
+        // this.themeTopYs = []
+        // this.themeTopYs.push(0)
+        // this.themeTopYs.push(this.$refs.params.$el.offsetTop)
+        // this.themeTopYs.push(this.$refs.comment.$el.offsetTop)
+        // this.themeTopYs.push(this.$refs.comment.$el.offsetTop+200)  
+      // })
       
     })
   },
   methods: {
+    addCart(){
+      const produce = {}
+      produce.image = this.topImages[0]
+      produce.title = this.goodstitle
+      produce.desc = this.goods.desc
+      produce.price = this.goods.newPrice
+      produce.iid = this.iid
+
+      
+      this.$store.commit('addCart',produce)
+      this.$toast.methods.show("加入購物車成功",2000)
+    },
     imageLoad() {
         this.$refs.scroll.refresh()
+        this.getThemeTopY()
+      },
+      titleClick(index){
+        this.$refs.scroll.scrollTo(0,-this.themeTopYs[index],200)
+      },
+      contentScroll(position){
+          const y = position.y
+          const length = this.themeTopYs.length
+          for(let i = 0 ; i<length; i++){
+            if(this.currentIndex != i && ((i < length -1 && y > this.themeTopYs[i] && this.themeTopYs[i+1] > y) || (i==length -1 && y > this.themeTopYs[i])) ){
+              this.currentIndex = i
+              this.$refs.nav.currentIndex = this.currentIndex
+            }
+          }
       }
+  },
+  updated() {
+    
   },
   mounted () {},
   components: {
@@ -80,7 +133,9 @@ export default {
     DetailGoodsInfo,
     DetailParamInfo,
     DetailCommentInfo,
-    Scroll
+    DetailBottomBar,
+    Scroll,
+    // Toast
   }
 }
 </script>
